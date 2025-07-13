@@ -1,0 +1,230 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "k6 極限負載測試 - 10,000 用戶",
+    "tags": ["k6", "load-test", "extreme", "10000-users"],
+    "timezone": "browser",
+    "refresh": "5s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "虛擬用戶數 (VUs)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "SELECT mean(\"value\") FROM \"vus\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "當前虛擬用戶數"
+          },
+          {
+            "expr": "SELECT mean(\"value\") FROM \"vus_max\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "最大虛擬用戶數"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "用戶數",
+            "max": 10500,
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "響應時間分佈",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "SELECT percentile(\"value\", 50) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "P50 響應時間"
+          },
+          {
+            "expr": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "P95 響應時間"
+          },
+          {
+            "expr": "SELECT percentile(\"value\", 99) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "P99 響應時間"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "響應時間 (ms)",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "請求速率 (RPS)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "SELECT derivative(mean(\"value\"), 1s) FROM \"http_reqs\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "每秒請求數"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "RPS",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "錯誤率",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "SELECT mean(\"value\") FROM \"http_req_failed\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "HTTP 錯誤率"
+          },
+          {
+            "expr": "SELECT mean(\"value\") FROM \"extreme_load_errors\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "極限負載錯誤率"
+          },
+          {
+            "expr": "SELECT mean(\"value\") FROM \"server_overload_rate\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "服務器過載率"
+          },
+          {
+            "expr": "SELECT mean(\"value\") FROM \"timeout_rate\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "超時率"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "錯誤率 (%)",
+            "min": 0,
+            "max": 1
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 5,
+        "title": "數據傳輸量",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "SELECT derivative(mean(\"value\"), 1s) FROM \"data_received\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "接收速率 (bytes/s)"
+          },
+          {
+            "expr": "SELECT derivative(mean(\"value\"), 1s) FROM \"data_sent\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "發送速率 (bytes/s)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "bytes/s",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 6,
+        "title": "檢查成功率",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "SELECT mean(\"value\") FROM \"checks\" WHERE $timeFilter",
+            "legendFormat": "整體檢查成功率"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.7
+                },
+                {
+                  "color": "green",
+                  "value": 0.85
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        }
+      },
+      {
+        "id": 7,
+        "title": "迭代持續時間",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "SELECT mean(\"value\") FROM \"iteration_duration\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "平均迭代時間"
+          },
+          {
+            "expr": "SELECT percentile(\"value\", 95) FROM \"iteration_duration\" WHERE $timeFilter GROUP BY time(5s)",
+            "legendFormat": "P95 迭代時間"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "時間 (ms)",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 24
+        }
+      }
+    ],
+    "templating": {
+      "list": []
+    }
+  }
+}

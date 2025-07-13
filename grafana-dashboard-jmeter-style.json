@@ -1,0 +1,265 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "k6 JMeter Style Label Analysis Dashboard",
+    "tags": ["k6", "jmeter", "labels", "performance"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "APDEX Score by Label (類似 JMeter APDEX 表格)",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "(\n  sum(rate(http_req_duration_bucket{le=\"1000\"}[5m])) by (label) +\n  sum(rate(http_req_duration_bucket{le=\"4000\"}[5m])) by (label) * 0.5\n) / sum(rate(http_req_duration_count[5m])) by (label)",
+            "format": "table",
+            "legendFormat": "{{label}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "table",
+              "filterable": true
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 0.7},
+                {"color": "green", "value": 0.94}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Request Statistics by Label (類似 JMeter 統計表格)",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "sum(http_req_duration_count) by (label)",
+            "format": "table",
+            "legendFormat": "Samples",
+            "refId": "A"
+          },
+          {
+            "expr": "avg(http_req_duration) by (label)",
+            "format": "table", 
+            "legendFormat": "Average (ms)",
+            "refId": "B"
+          },
+          {
+            "expr": "min(http_req_duration) by (label)",
+            "format": "table",
+            "legendFormat": "Min (ms)", 
+            "refId": "C"
+          },
+          {
+            "expr": "max(http_req_duration) by (label)",
+            "format": "table",
+            "legendFormat": "Max (ms)",
+            "refId": "D"
+          },
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(http_req_duration_bucket[5m])) by (label, le))",
+            "format": "table",
+            "legendFormat": "Median (ms)",
+            "refId": "E"
+          },
+          {
+            "expr": "histogram_quantile(0.90, sum(rate(http_req_duration_bucket[5m])) by (label, le))",
+            "format": "table",
+            "legendFormat": "90th %ile (ms)",
+            "refId": "F"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_req_duration_bucket[5m])) by (label, le))",
+            "format": "table",
+            "legendFormat": "95th %ile (ms)",
+            "refId": "G"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_req_duration_bucket[5m])) by (label, le))",
+            "format": "table",
+            "legendFormat": "99th %ile (ms)",
+            "refId": "H"
+          },
+          {
+            "expr": "sum(rate(http_req_failed[5m])) by (label) * 100",
+            "format": "table",
+            "legendFormat": "Error %",
+            "refId": "I"
+          },
+          {
+            "expr": "sum(rate(http_req_duration_count[5m])) by (label)",
+            "format": "table",
+            "legendFormat": "Throughput (/sec)",
+            "refId": "J"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "merge",
+            "options": {}
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true},
+              "indexByName": {
+                "label": 0,
+                "Value #A": 1,
+                "Value #B": 2,
+                "Value #C": 3,
+                "Value #D": 4,
+                "Value #E": 5,
+                "Value #F": 6,
+                "Value #G": 7,
+                "Value #H": 8,
+                "Value #I": 9,
+                "Value #J": 10
+              },
+              "renameByName": {
+                "label": "Label",
+                "Value #A": "Samples",
+                "Value #B": "Average",
+                "Value #C": "Min", 
+                "Value #D": "Max",
+                "Value #E": "Median",
+                "Value #F": "90th %ile",
+                "Value #G": "95th %ile",
+                "Value #H": "99th %ile",
+                "Value #I": "Error %",
+                "Value #J": "Throughput"
+              }
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "table",
+              "filterable": true
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Error %"},
+              "properties": [
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "steps": [
+                      {"color": "green", "value": null},
+                      {"color": "yellow", "value": 1},
+                      {"color": "red", "value": 5}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8}
+      },
+      {
+        "id": 3,
+        "title": "Response Time Distribution by Label",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "sum(rate(http_req_duration_bucket[5m])) by (label, le)",
+            "format": "heatmap",
+            "legendFormat": "{{label}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18}
+      },
+      {
+        "id": 4,
+        "title": "Error Rate by Label",
+        "type": "bargauge",
+        "targets": [
+          {
+            "expr": "sum(rate(http_req_failed[5m])) by (label) * 100",
+            "legendFormat": "{{label}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18}
+      },
+      {
+        "id": 5,
+        "title": "Throughput by Label (Requests/sec)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(http_req_duration_count[1m])) by (label)",
+            "legendFormat": "{{label}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 26}
+      },
+      {
+        "id": 6,
+        "title": "Response Time Trends by Label",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "avg(http_req_duration) by (label)",
+            "legendFormat": "{{label}} - Average",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_req_duration_bucket[5m])) by (label, le))",
+            "legendFormat": "{{label}} - 95th percentile",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms"
+          }
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 34}
+      }
+    ],
+    "time": {
+      "from": "now-30m",
+      "to": "now"
+    },
+    "refresh": "5s",
+    "schemaVersion": 27,
+    "version": 0
+  }
+}

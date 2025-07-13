@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>k6 測試應用</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            background-color: #f8f9fa;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .metric-card {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .metric-label {
+            font-size: 14px;
+            color: #666;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .status.ok {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 k6 負載測試目標應用</h1>
+        
+        <div class="status ok">
+            ✅ 服務運行正常 - 準備接受測試
+        </div>
+        
+        <div class="section">
+            <h2>應用資訊</h2>
+            <p><strong>服務名稱:</strong> k6 測試目標應用</p>
+            <p><strong>版本:</strong> 1.0.0</p>
+            <p><strong>端口:</strong> 8080</p>
+            <p><strong>狀態:</strong> 運行中</p>
+        </div>
+        
+        <div class="section">
+            <h2>模擬性能指標</h2>
+            <div class="metrics">
+                <div class="metric-card">
+                    <div class="metric-value" id="response-time">~50ms</div>
+                    <div class="metric-label">平均回應時間</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="requests-count">0</div>
+                    <div class="metric-label">總請求數</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="success-rate">100%</div>
+                    <div class="metric-label">成功率</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="concurrent-users">0</div>
+                    <div class="metric-label">並發用戶</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>測試端點</h2>
+            <p>此應用提供以下端點供 k6 測試：</p>
+            <ul>
+                <li><code>GET /</code> - 主頁面</li>
+                <li><code>GET /api/health</code> - 健康檢查</li>
+                <li><code>GET /api/users</code> - 用戶列表</li>
+                <li><code>POST /api/users</code> - 創建用戶</li>
+                <li><code>GET /slow</code> - 慢回應端點 (模擬延遲)</li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2>測試操作</h2>
+            <button onclick="simulateLoad()">模擬負載</button>
+            <button onclick="simulateError()">模擬錯誤</button>
+            <button onclick="resetCounters()">重置計數器</button>
+        </div>
+        
+        <div class="section">
+            <h2>k6 測試命令範例</h2>
+            <pre style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto;">
+# 基本測試
+docker-compose run --rm k6 run /scripts/basic-test.js
+
+# 進階測試
+docker-compose run --rm k6 run /scripts/advanced-test.js
+
+# API 測試
+docker-compose run --rm k6 run /scripts/api-test.js
+
+# 自定義參數測試
+docker-compose run --rm k6 run --vus 10 --duration 30s /scripts/basic-test.js
+            </pre>
+        </div>
+    </div>
+    
+    <script>
+        let requestCount = 0;
+        let concurrentUsers = 0;
+        
+        // 模擬計數器更新
+        function updateCounters() {
+            requestCount++;
+            document.getElementById('requests-count').textContent = requestCount;
+            
+            // 模擬並發用戶數變化
+            concurrentUsers = Math.floor(Math.random() * 20) + 1;
+            document.getElementById('concurrent-users').textContent = concurrentUsers;
+            
+            // 模擬回應時間變化
+            const responseTime = Math.floor(Math.random() * 100) + 20;
+            document.getElementById('response-time').textContent = `~${responseTime}ms`;
+        }
+        
+        function simulateLoad() {
+            alert('模擬負載已啟動！');
+            setInterval(updateCounters, 1000);
+        }
+        
+        function simulateError() {
+            document.getElementById('success-rate').textContent = '95%';
+            alert('已注入 5% 錯誤率');
+        }
+        
+        function resetCounters() {
+            requestCount = 0;
+            concurrentUsers = 0;
+            document.getElementById('requests-count').textContent = '0';
+            document.getElementById('concurrent-users').textContent = '0';
+            document.getElementById('success-rate').textContent = '100%';
+            document.getElementById('response-time').textContent = '~50ms';
+        }
+        
+        // 頁面載入時更新計數器
+        updateCounters();
+    </script>
+</body>
+</html>

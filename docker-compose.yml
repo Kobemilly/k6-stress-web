@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Grafana 服務
+  grafana:
+    image: grafana/grafana:latest
+    container_name: k6-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_INSTALL_PLUGINS=grafana-k6-app
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - k6-network
+    restart: unless-stopped
+
+  # InfluxDB 用於存儲 k6 測試指標
+  influxdb:
+    image: influxdb:1.8
+    container_name: k6-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - INFLUXDB_DB=k6
+      - INFLUXDB_USER=k6
+      - INFLUXDB_USER_PASSWORD=k6password
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=admin123
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+    networks:
+      - k6-network
+    restart: unless-stopped
+
+  # k6 測試執行器
+  k6:
+    image: grafana/k6:latest
+    container_name: k6-runner
+    volumes:
+      - ./scripts:/scripts
+      - ./results:/results
+    networks:
+      - k6-network
+    depends_on:
+      - influxdb
+    profiles:
+      - testing  # 使用 profile 來控制是否啟動
+
+  # 測試目標應用 (簡單的 HTTP 服務)
+  test-app:
+    image: nginx:alpine
+    container_name: k6-test-app
+    ports:
+      - "8080:80"
+    volumes:
+      - ./test-app:/usr/share/nginx/html
+    networks:
+      - k6-network
+    restart: unless-stopped
+
+volumes:
+  grafana-data:
+  influxdb-data:
+
+networks:
+  k6-network:
+    driver: bridge

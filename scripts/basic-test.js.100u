@@ -1,0 +1,297 @@
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+import { Counter, Rate, Trend } from 'k6/metrics';
+
+// 自定義指標 - 溫和型壓力測試（20/40/100 用戶），專為 Grafana 監控設計
+let moderateLoadErrors = new Rate('moderate_load_errors');
+let moderateLoadResponseTime = new Trend('moderate_load_response_time');
+let moderateLoadRequests = new Counter('moderate_load_requests');
+let responseTimeP95 = new Trend('response_time_p95');
+let responseTimeP99 = new Trend('response_time_p99');
+let successfulRequests = new Counter('successful_requests');
+let failedRequests = new Counter('failed_requests');
+let loadStageMetric = new Counter('load_stage_metric');
+
+// 測試配置 - 依據圖片說明的精確測試情境
+export const options = {
+  // 使用 scenarios 配置 - 分階段測試（20/40/100 用戶）
+  scenarios: {
+    // 第一階段：20 用戶測試
+    // 每隔30秒新增10位使用者，直到20位使用者
+    stage_20_users: {
+      executor: 'ramping-vus',
+      stages: [
+        // 加壓期間：每隔30秒新增10位使用者
+        { duration: '5s', target: 10 },   // 5秒內啟動完成10位使用者
+        { duration: '25s', target: 10 },  // 維持10位使用者25秒（共30秒）
+        { duration: '5s', target: 20 },   // 5秒內啟動完成20位使用者
+        { duration: '25s', target: 20 },  // 維持20位使用者25秒（共30秒）
+        
+        // 高峰期間：維持壓力60秒
+        { duration: '60s', target: 20 },  // 維持20位使用者60秒
+        
+        // 降壓期間：每5秒移除10位使用者
+        { duration: '5s', target: 10 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 0 },    // 5秒內移除剩餘10位使用者
+      ],
+      gracefulRampDown: '5s',
+      gracefulStop: '5s',
+      tags: {
+        test_type: 'stage_20_users',
+        target: 'production',
+        max_users: '20'
+      }
+    },
+    
+    // 第二階段：40 用戶測試（在第一階段完成後開始）
+    // 每隔30秒新增10位使用者，直到40位使用者
+    stage_40_users: {
+      executor: 'ramping-vus',
+      startTime: '130s',  // 第一階段完成後開始
+      stages: [
+        // 加壓期間：每隔30秒新增10位使用者
+        { duration: '5s', target: 10 },   // 5秒內啟動完成10位使用者
+        { duration: '25s', target: 10 },  // 維持10位使用者25秒（共30秒）
+        { duration: '5s', target: 20 },   // 5秒內啟動完成20位使用者
+        { duration: '25s', target: 20 },  // 維持20位使用者25秒（共30秒）
+        { duration: '5s', target: 30 },   // 5秒內啟動完成30位使用者
+        { duration: '25s', target: 30 },  // 維持30位使用者25秒（共30秒）
+        { duration: '5s', target: 40 },   // 5秒內啟動完成40位使用者
+        { duration: '25s', target: 40 },  // 維持40位使用者25秒（共30秒）
+        
+        // 高峰期間：維持壓力60秒
+        { duration: '60s', target: 40 },  // 維持40位使用者60秒
+        
+        // 降壓期間：每5秒移除10位使用者
+        { duration: '5s', target: 30 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 20 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 10 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 0 },    // 5秒內移除剩餘10位使用者
+      ],
+      gracefulRampDown: '5s',
+      gracefulStop: '5s',
+      tags: {
+        test_type: 'stage_40_users',
+        target: 'production',
+        max_users: '40'
+      }
+    },
+    
+    // 第三階段：100 用戶測試（在第二階段完成後開始）
+    // 每隔30秒新增10位使用者，直到100位使用者
+    stage_100_users: {
+      executor: 'ramping-vus',
+      startTime: '410s',  // 第二階段完成後開始
+      stages: [
+        // 加壓期間：每隔30秒新增10位使用者（共需9次，270秒）
+        { duration: '5s', target: 10 },   // 5秒內啟動完成10位使用者
+        { duration: '25s', target: 10 },  // 維持10位使用者25秒
+        { duration: '5s', target: 20 },   // 5秒內啟動完成20位使用者
+        { duration: '25s', target: 20 },  // 維持20位使用者25秒
+        { duration: '5s', target: 30 },   // 5秒內啟動完成30位使用者
+        { duration: '25s', target: 30 },  // 維持30位使用者25秒
+        { duration: '5s', target: 40 },   // 5秒內啟動完成40位使用者
+        { duration: '25s', target: 40 },  // 維持40位使用者25秒
+        { duration: '5s', target: 50 },   // 5秒內啟動完成50位使用者
+        { duration: '25s', target: 50 },  // 維持50位使用者25秒
+        { duration: '5s', target: 60 },   // 5秒內啟動完成60位使用者
+        { duration: '25s', target: 60 },  // 維持60位使用者25秒
+        { duration: '5s', target: 70 },   // 5秒內啟動完成70位使用者
+        { duration: '25s', target: 70 },  // 維持70位使用者25秒
+        { duration: '5s', target: 80 },   // 5秒內啟動完成80位使用者
+        { duration: '25s', target: 80 },  // 維持80位使用者25秒
+        { duration: '5s', target: 90 },   // 5秒內啟動完成90位使用者
+        { duration: '25s', target: 90 },  // 維持90位使用者25秒
+        { duration: '5s', target: 100 },  // 5秒內啟動完成100位使用者
+        { duration: '25s', target: 100 }, // 維持100位使用者25秒
+        
+        // 高峰期間：維持壓力60秒
+        { duration: '60s', target: 100 }, // 維持100位使用者60秒
+        
+        // 降壓期間：每5秒移除10位使用者（共需10次，50秒）
+        { duration: '5s', target: 90 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 80 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 70 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 60 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 50 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 40 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 30 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 20 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 10 },   // 5秒內移除10位使用者
+        { duration: '5s', target: 0 },    // 5秒內移除剩餘10位使用者
+      ],
+      gracefulRampDown: '5s',
+      gracefulStop: '5s',
+      tags: {
+        test_type: 'stage_100_users',
+        target: 'production',
+        max_users: '100'
+      }
+    },
+  },
+  
+  // 閾值設定 - 溫和測試的合理閾值
+  thresholds: {
+    http_req_duration: ['p(95)<5000'],  // 95%的請求應在5秒內完成
+    http_req_failed: ['rate<0.1'],      // 失敗率應低於10%
+    http_reqs: ['rate>1'],              // 每秒至少1個請求
+    'http_req_duration{expected_response:true}': ['p(95)<3000'], // 成功請求的95%響應時間
+    moderate_load_errors: ['rate<0.15'], // 負載錯誤率應低於15%
+    successful_requests: ['count>100'],  // 成功請求數應超過100
+  },
+  
+  // 系統資源配置
+  noConnectionReuse: false,     // 重用連接以提升效率
+  userAgent: 'k6-moderate-load-test/1.0',
+};
+
+// 測試函數 - 溫和型壓力測試（20/40/100 用戶）
+export default function() {
+  const startTime = new Date().getTime();
+  
+  // 獲取當前測試階段
+  const currentStage = __ENV.K6_STAGE || 'unknown';
+  
+  // 測試正式主機
+  let response = http.get('http://10.64.8.34/index.php', {
+    timeout: '10s',  // 10秒超時，適用於溫和負載測試
+    tags: { 
+      test_type: 'moderate_load', 
+      target: 'production',
+      stage: currentStage
+    }
+  });
+  
+  const endTime = new Date().getTime();
+  const responseTime = endTime - startTime;
+  
+  // 記錄自定義指標 - 便於 Grafana 監控
+  moderateLoadRequests.add(1);
+  moderateLoadResponseTime.add(responseTime);
+  responseTimeP95.add(responseTime);
+  responseTimeP99.add(responseTime);
+  
+  // 記錄負載階段指標
+  if (__VU <= 20) {
+    loadStageMetric.add(1, { stage: 'light_load_20' });
+  } else if (__VU <= 40) {
+    loadStageMetric.add(1, { stage: 'medium_load_40' });
+  } else if (__VU <= 100) {
+    loadStageMetric.add(1, { stage: 'heavy_load_100' });
+  }
+  
+  // 驗證回應 - 溫和負載測試的檢查
+  let success = check(response, {
+    'status is 200': (r) => r.status === 200,
+    'response time < 10s': (r) => r.timings.duration < 10000,  // 10秒內響應
+    'response time < 5s': (r) => r.timings.duration < 5000,    // 5秒內響應（理想）
+    'response time < 2s': (r) => r.timings.duration < 2000,    // 2秒內響應（良好）
+    'response received': (r) => r.body && r.body.length > 0,   // 有接收到內容
+    'no server errors': (r) => r.status < 500,                // 無服務器錯誤
+  });
+  
+  // 錯誤分析和記錄 - 為 Grafana 提供詳細數據
+  if (!response || response.status !== 200) {
+    moderateLoadErrors.add(1);
+    failedRequests.add(1);
+    
+    // 記錄錯誤詳情
+    if (response && response.status >= 500) {
+      console.log(`服務器錯誤 - 狀態碼: ${response.status}, 響應時間: ${responseTime}ms, VU: ${__VU}`);
+    } else if (!response || responseTime >= 10000) {
+      console.log(`請求超時 - 響應時間: ${responseTime}ms, VU: ${__VU}`);
+    } else if (response && response.status >= 400) {
+      console.log(`客戶端錯誤 - 狀態碼: ${response.status}, 響應時間: ${responseTime}ms, VU: ${__VU}`);
+    }
+  } else {
+    moderateLoadErrors.add(0);
+    successfulRequests.add(1);
+  }
+  
+  // 負載階段狀態記錄
+  if (__VU > 80) {
+    // 高負載階段的特殊記錄
+    if (responseTime > 5000) {
+      console.log(`[高負載階段] VU:${__VU}, 響應時間:${responseTime}ms, 狀態:${response.status}`);
+    }
+  }
+  
+  // 模擬用戶行為 - 溫和負載測試的思考時間
+  sleep(Math.random() * 2 + 1);  // 1-3秒隨機思考時間
+}
+
+// 設置階段 - 溫和型壓力測試（20/40/100 用戶）
+export function setup() {
+  console.log('🚀 開始溫和型壓力測試...');
+  console.log('🎯 測試目標：http://10.64.8.34/index.php');
+  console.log('📊 測試階段：');
+  console.log('   第一階段：20 用戶 (0-7分鐘)');
+  console.log('   第二階段：40 用戶 (8-16分鐘)');
+  console.log('   第三階段：100 用戶 (17-30分鐘)');
+  console.log('⏱️ 總測試時間：約 30 分鐘');
+  console.log('📈 溫和負載設計，避免對服務器造成過大壓力');
+  console.log('');
+  console.log('🔍 測試階段詳細：');
+  console.log('   階段1 - 輕負載測試:');
+  console.log('     • 1分鐘預熱到5用戶');
+  console.log('     • 2分鐘增加到20用戶');
+  console.log('     • 3分鐘維持20用戶');
+  console.log('     • 1分鐘減少到0用戶');
+  console.log('   階段2 - 中負載測試:');
+  console.log('     • 1分鐘預熱到10用戶');
+  console.log('     • 2分鐘增加到40用戶');
+  console.log('     • 4分鐘維持40用戶');
+  console.log('     • 1分鐘減少到0用戶');
+  console.log('   階段3 - 重負載測試:');
+  console.log('     • 1分鐘預熱到20用戶');
+  console.log('     • 2分鐘增加到50用戶');
+  console.log('     • 2分鐘增加到100用戶');
+  console.log('     • 5分鐘維持100用戶');
+  console.log('     • 3分鐘逐步減少到0用戶');
+  console.log('');
+  
+  // 測試目標服務器連通性
+  try {
+    let testResponse = http.get('http://10.64.8.34/index.php', { timeout: '10s' });
+    if (testResponse.status === 200) {
+      console.log('✅ 目標服務器連通性測試成功');
+      console.log(`   響應時間: ${testResponse.timings.duration}ms`);
+      console.log(`   響應大小: ${testResponse.body.length} bytes`);
+    } else {
+      console.log(`⚠️ 目標服務器返回狀態碼: ${testResponse.status}`);
+    }
+  } catch (error) {
+    console.log(`❌ 目標服務器連通性測試失敗: ${error}`);
+  }
+  
+  console.log('');
+  console.log('🎬 開始測試執行...');
+  
+  return { 
+    startTime: new Date().toISOString(),
+    testType: 'moderate_load',
+    maxUsers: 100
+  };
+}
+
+// 清理階段
+export function teardown(data) {
+  console.log('');
+  console.log('🏁 溫和型壓力測試完成！');
+  console.log(`測試類型: ${data.testType}`);
+  console.log(`最大用戶數: ${data.maxUsers}`);
+  console.log(`開始時間: ${data.startTime}`);
+  console.log(`結束時間: ${new Date().toISOString()}`);
+  console.log('');
+  console.log('📊 數據收集完成，請檢查：');
+  console.log('   - InfluxDB 數據庫中的測試結果');
+  console.log('   - Grafana 監控儀表板');
+  console.log('   - 三個階段的性能對比');
+  console.log('   - 響應時間趨勢分析');
+  console.log('');
+  console.log('🔍 建議查看的關鍵指標：');
+  console.log('   - 各階段平均響應時間');
+  console.log('   - 95%響應時間分佈');
+  console.log('   - 錯誤率變化趨勢');
+  console.log('   - 吞吐量對比');
+}
