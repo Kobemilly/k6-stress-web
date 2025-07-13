@@ -2,7 +2,7 @@
 
 **測試日期**：2025-07-13
 **測試腳本**：realistic-business-test.js
-**目標網址**：http://10.64.8.34/index.php
+**目標網址**：http://x.x.x.x/index.php
 
 ---
 
